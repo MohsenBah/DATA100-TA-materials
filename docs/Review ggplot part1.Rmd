@@ -1,0 +1,219 @@
+---
+title: "Review some topics part1"
+author: "Mohsen Bahremani"
+date: "10/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Gapminder Data
+
+We will be working with data from Hans Rosling's [Gapminder](http://www.gapminder.org) project.
+An excerpt of these data can be accessed through an R package called `gapminder`, cleaned and assembled by Jenny Bryan at UBC.
+
+--
+
+If you did not install Gapminder, Please run this in the console: `install.packages("gapminder")`
+
+Load the package and data:
+```{r}
+library(gapminder)
+library(tidyverse)
+```
+
+# Initial step
+
+It has been suggested that at initial step, we look over the data, including:
+
+Number of variables,
+Number of observations, 
+definition of varialbes, 
+and so on.
+```{r}
+glimpse(gapminder)
+```
+
+# Interesting point is that:
+
+* **Factor** variables `country` and `continent`
+
+   + Factors are categorical data with an underlying numeric representation
+
+--
+
+* For number of observation, you can use nrow(gapminder) in addition of the above output. 
+
+--
+
+* A nested/hierarchical structure: `year` in `country` in `continent`
+
+   + These are panel data!
+   
+--
+# Description of the Data
+
+```{r}
+?gapminder
+```
+
+Also, if you use external datasets like some CSV files, this code , i.e. "attributes(NAME_OF_DATA)" or especially for description of variables attributes(NAME_OF_DATA)$dictionary, can be useful.
+
+--
+# Summary
+
+General information about:
+  + the statistics of variables 
+  + the number of rows related to factor variables 
+
+
+```{r}
+summary(gapminder)
+```
+
+
+# plots 
+
+-- Bar chart
+   Bar plots are often used to visualize the distribution of a discrete variable, like continent. 
+   With ggplot2, this is relatively easy:
+
+    map the x variable to continent
+    add a geom_bar() layer, that counts the observations in each category and plots them as bar lengths.
+
+
+
+```{r}
+ggplot(gapminder, aes(x=continent, color=continent)) + 
+  geom_bar()
+
+# How the colore of whole of the rectangle can be changed?
+```
+
+one of the method to store the plot in order to call later:
+
+```{r}
+mybar <- last_plot()
+```
+
+we can add layer to the stored plot
+
+```{r}
+mybar + coord_flip()
+mybar + coord_polar()
+```
+
+-- boxplot
+Alternatively, you might want to view the distributions of life expectancy by another visual summary, grouped by continent.
+All you need to do is change the aesthetic to show continent on one axis, and life expectancy (lifeExp) on the other.
+```{r}
+ggplot(data=gapminder, aes(x=continent, y=lifeExp, fill=continent))+
+        geom_boxplot(outlier.size=2)
+        
+```
+
+-- scatter plot
+    Now let’s explore the relationship between life expectancy and GDP (Gross Domestic Product) with a scatterplot
+```{r}
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp))+
+  geom_point()
+
+# how we can do more readable this plot?
+```
+
+-- 
+GDP variable is so skewed that it is better plotted on a log scale:
+
+```{r}
+ggplot(gapminder, aes(x = log10(gdpPercap), y = lifeExp)) +
+  geom_point() #+
+  #xlab(" Logarithm of GDP") + 
+  #ylab("Life expectancy") 
+# improvement?
+```
+
+
+Changing theme and font size
+
+
+# Plotting All Countries
+
+```{r}
+ggplot(data = gapminder, 
+       aes(x = year, y = lifeExp)) +
+  geom_point(color = "red", size = 3) +
+  #geom_line(color = "red", size = 3) +
+  xlab("Year") + 
+  ylab("Life expectancy") +
+  ggtitle("Life expectancy over time") +
+  theme_bw(base_size=18)
+```
+
+# simple grouping
+
+```{r}
+ggplot(data = gapminder, 
+       aes(x = year, y = lifeExp, 
+           group = country)) +
+  geom_line(color = "red") + #<<
+  xlab("Year") + 
+  ylab("Life expectancy") +
+  ggtitle("Life expectancy over time") +
+  theme_bw(base_size=18)
+```
+
+
+```{r}
+ggplot(data = gapminder, 
+       aes(x = year, y = lifeExp, 
+           group = country, 
+           color = continent)) + 
+  geom_line() + 
+  xlab("Year") + 
+  ylab("Life expectancy") +
+  ggtitle("Life expectancy over time") +
+  theme_bw(base_size=18)
+```
+ Seperating the continet plot and modification on legend position
+```{r}
+ggplot(data = gapminder, 
+       aes(x = year, y = lifeExp, 
+           group = country, 
+           color = continent)) +
+  geom_line() +
+  xlab("Year") + 
+  ylab("Life expectancy") +
+  ggtitle("Life expectancy over time") +
+  theme_bw(base_size=18) +
+  facet_wrap(~ continent)
+  #theme(legend.position = c(0.8, 0.25))
+  #theme(legend.position = "none")
+```
+# Showing a Stored Graph
+
+```{r}
+lifeExp_by_year <- last_plot()
+```
+
+--call the stored graph
+--add layer to stored graph
+
+```{r}
+lifeExp_by_year #+
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+
+lifeExp_by_year +
+  theme(legend.position = c(0.8, 0.25))+
+  scale_color_manual(
+      name = "Which\ncontinent\nare we\nlooking at?", # \n adds a line break #<<
+      values = c("Africa" = "seagreen", "Americas" = "turquoise1", 
+                 "Asia" = "royalblue", "Europe" = "violetred1", "Oceania" = "yellow"))
+```
+ 
+

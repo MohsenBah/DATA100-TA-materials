@@ -1,0 +1,282 @@
+---
+title: "School score"
+author: "Mohsen Bahremani"
+date: "10/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+
+```
+
+For this file, I will focus on analyzing three specific questions based on this dataset:
+
+1. Do males generally outperform females on the math section of the SAT?
+2. How did the states compare to each other in terms of average total SAT score in 2015?
+3. Is there a correlation between an arts/music education and a high SAT score?
+
+## Part 1
+
+NB SAT is a standardized test widely used for college admissions in the United States.
+
+```{r}
+URL<-("https://corgis-edu.github.io/corgis/datasets/csv/school_scores/school_scores.csv")
+
+df <-read_csv(URL)
+
+```
+
+```{r}
+df %>% glimpse()
+```
+
+Make sure that we have 53 regions :
+
+```{r}
+df %>% summarize(distinct = n_distinct(State.Name)) %>% pull()
+```
+Make sure that we have 11 years represented (from 2005 to 2015):
+
+```{r}
+df %>% summarize(distinct = n_distinct(Year)) %>% pull()
+```
+
+Identify the outliers: 
+
+
+```{r}
+df$Year <- factor (df$Year)
+ggplot(df, aes(x =Year, y=Total.Math))+
+        geom_boxplot(outlier.size=2, outlier.shape=4)
+```
+
+
+
+```{r}
+ggplot(df, aes(x=Year, y=`Academic Subjects.Mathematics.Average GPA`))+
+        geom_boxplot(outlier.size=2)
+```
+
+I want to see the relation between the average GPA in math and the average math score:
+
+```{r}
+ggplot(df, aes(x = `Academic Subjects.Mathematics.Average GPA`, y = Total.Math))+
+  geom_point()
+```
+
+I want to know the correlation between them.
+
+```{r}
+df %>% summarize(correlation = cor(`Academic Subjects.Mathematics.Average GPA`, Total.Math)) %>% pull()
+
+```
+
+The large and positive correlation shows that higher GPAs in math are associated with higher scores on the math section of the SAT.
+
+The average SAT score (out of 1600) across the nation during the 11-year period:
+
+```{r}
+average_total_score <- mean(df$Total.Math) + mean(df$Total.Verbal)
+average_total_score
+```
+
+The standard deviation of SAT scores across the nation during the 11-year period:
+
+```{r}
+df1 <- df %>% mutate (Average_Total_Score = Total.Math + Total.Verbal)
+standard_deviation <- sd(df1$Average_Total_Score)
+standard_deviation
+```
+
+We can see the frequency of score in histogram:
+
+```{r}
+th <- theme(plot.title = element_text(face = "bold", hjust = 0.5), 
+             axis.title = element_text(size = rel(1)),
+             legend.position = "bottom")
+ggplot(data = df1) +
+  geom_histogram(mapping = aes(x = Average_Total_Score), bins = 20) + 
+  labs(title = "Histogram of Average SAT Scores", x = "Average Total Score", y = "Frequency") + th
+```
+#Two peaks
+1-
+You’ve got two peaks of data, which usually indicates you’ve got two different groups. For example, exam scores tend to be normally distributed with a single peak. However, grades sometimes fall into a bimodal distribution with a lot of students getting A grades and a lot getting F grades. This can tell you that you are looking at two different groups of students. It could be that one group is underprepared for the class (perhaps because of a lack of previous classes). The other group may have overprepared.
+2-
+Two peaks could also indicate your data is sinusoidal. If you suspect your data might be following a wave-like pattern, create a scatter plot or a run sequence plot to double-check for sinusoidal patterns. You could also make a lag plot; an elliptical pattern would confirm that the data is sinusoidal.
+
+
+
+
+Histogram of Average SAT scores across the years:
+
+```{r}
+ggplot(data = df1) +
+  geom_histogram(mapping = aes(x = Average_Total_Score), bins = 20) + 
+  labs(title = "Histogram of Average SAT Scores By Year", x = "Average Total Score", y = "Frequency") + 
+  facet_wrap(~Year) + th
+```
+
+## Part 1
+
+We reduce the dataset based on math score and gender: 
+
+```{r}
+library(knitr)
+df_gendered_math_scores <- df %>% select( Male_Math= Gender.Male.Math, Female_Math= Gender.Female.Math, State.Name, Year)
+df_gendered_math_scores
+```
+
+We can also compare the average male math score with the average female math score on the SAT (across the nation and over a span of 11 years):
+
+```{r}
+mean(df$Gender.Male.Math)
+```
+
+```{r}
+mean(df$Gender.Female.Math)
+
+```
+
+```{r}
+difference = mean(df$Gender.Male.Math) - mean(df$Gender.Female.Math)
+difference
+```
+
+
+We can see that for the period 2005-2015, males had a higher mean math score than females Specifically, males scored 35.49567 more points than females on average.
+
+The mean difference calculated above is for a very large period spanning from 2005 to 2015. It would be more beneficial to us to see how the gender difference in math scores has changed throughout the years. To figure this out, we can create a new dataframe that includes the mean male score, mean female score, the difference between the two averages, and the year.
+
+```{r}
+df_mean_by_year <-
+df_gendered_math_scores %>% 
+  group_by(Year) %>% 
+  summarise( male_mean = mean( Male_Math) , female_mean = mean(Female_Math), diff = mean(Male_Math) - mean(Female_Math))
+
+df_mean_by_year
+
+
+```
+
+Since 2005, the point difference between the mean scores for males and females has not changed significantly for 11 years. While it has decreased very slightly, the difference in mean scores is consistently above 30 points, which is a statistically significant point difference. 
+
+```{r}
+t.test(df_gendered_math_scores$Male_Math,df_gendered_math_scores$Female_Math)
+
+
+
+```
+
+
+Boxplot of Male and Female Mean Math Scores By Year:
+```{r}
+th <- theme(plot.title = element_text(face = "bold", hjust = 0.5), 
+             axis.title = element_text(size = rel(1)),
+             legend.position = "bottom")
+
+
+ggplot(data=df) +
+  geom_boxplot(mapping = aes(x = Year, y = Gender.Male.Math), fill = NA, col = "blue") +
+  labs(title = "Gendered Math Score Averages By Year", x = "Year", y = "Mean Math Score") + 
+  geom_boxplot(mapping = aes(x = Year, y = Gender.Female.Math), fill = NA, col = "red") + th 
+
+
+```
+
+*** If the table is tidied with a column `gender`, then the boxplot can be done so that the male and female plots are side-by-side ***
+
+The boxplot provides a visual representation of the conclusions found above. Blue represents male scores, while red represents female scores. Note that the outliers of the female math scores are lower than the outliers of the male math scores.
+
+## Part 2: 
+
+# SAT Scores by State
+
+How does each state compare to the other states academically? To test this, we will find the mean SAT score for each state during the year 2015.
+
+
+
+```{r}
+state_scores <- df1 %>% 
+  filter(Year == "2015") %>%
+  select(Average_Total_Score, State.Name)
+
+state_scores
+
+
+state_scores <- state_scores[-c(9, 40, 48), ] #removes DC, Puerto Rico, and Virgin Islands
+
+state_scores$State.Name = tolower(state_scores$State.Name)
+
+colnames(state_scores)[colnames(state_scores) == 'State.Name'] <- 'region'
+
+state_scores %>% arrange(desc(Average_Total_Score), region)
+
+```
+
+We then combine this data with the map_state data, and display them on a map:
+
+
+```{r}
+
+map_state <- map_data("state")
+map_state
+combined_data <- map_state %>% left_join(state_scores, by = "region")
+combined_data
+```
+
+This data can be visually displayed on a map of the U.S.
+
+
+```{r}
+# map_theme <- theme(
+#   axis.title.x = element_blank(), 
+#   axis.title.y = element_blank(),
+#   axis.text.x = element_blank(),
+#   axis.text.y = element_blank(),
+#   axis.ticks.x = element_blank(),
+#   axis.ticks.y = element_blank(),
+#   panel.background = element_rect(fill = "white")
+# )
+
+ggplot() +
+  geom_polygon(data = combined_data, 
+               mapping = aes(x = long, y = lat, group = region, fill = Average_Total_Score)) +
+  geom_polygon(data = map_state,
+               mapping = aes(x = long, y = lat, group = group), fill = NA, col = "black") +
+  scale_fill_gradient(low = "red", high = "blue") + #this is the function that shows the score value in color
+  coord_quickmap() + #map_theme+
+  labs(title = "Average SAT Scores in 2015") 
+```
+
+This matches the data we got in the table, where Illinois had the highest average SAT score and is thus the most blue on the map. Meanwhile, places like Texas, Idaho, and Florida have some of the lowest average SAT scores, and so are the most red in color. It is interesting to see that the midwest/Great Lakes region tends to have a higher SAT score average than places on the coast or in the south.
+
+## part 3
+
+# The Relationship Between an Arts Education and SAT Score
+
+Is an education in the arts or music associated with a high SAT score? 
+
+We can test to see if there is an association between an arts and music education and test scores by calculating the correlation between the two variables.
+
+```{r}
+df$Year <- factor (df$Year)
+correlation2 <- df1 %>% select(`Academic Subjects.Arts/Music.Average Years`, Average_Total_Score, Year)
+correlation2 %>% summarize(correlation = cor(`Academic Subjects.Arts/Music.Average Years`, Average_Total_Score))
+```
+
+From this, we see that the correlation between arts education SAT score is high and positive. This means that the more years of arts or music education a student goes through, the higher their SAT score tends to be, which supports the findings of Americans for the Arts.
+
+We can also plot the data in a scatterplot:
+```{r}
+ggplot(data = correlation2, mapping = aes(x=`Academic Subjects.Arts/Music.Average Years`, y=Average_Total_Score)) +
+  geom_point(alpha = 0.8, position = "jitter") + 
+  geom_smooth(method = "lm") +
+  labs(title = "Correlation between Arts Education and SAT Score", x = "Number of Years of Arts Education", y = "Total SAT Score") + th
+```
+
+As can be seen from the line of best fit on the graph, there is a strong, positive relationship between the two factors. While we cannot identify causation between having a longer arts education and having a higher SAT score, we can still assume that they are at least correlated with each other.

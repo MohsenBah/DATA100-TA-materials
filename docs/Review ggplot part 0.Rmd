@@ -1,0 +1,307 @@
+---
+title: "Review some topics part1"
+author: "Mohsen Bahremani"
+date: "10/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Gapminder Data
+
+We will be working with data from Hans Rosling's [Gapminder](http://www.gapminder.org) project.
+An excerpt of these data can be accessed through an R package called `gapminder`, cleaned and assembled by Jenny Bryan at UBC.
+
+--
+
+If you did not install Gapminder, Please run this in the console: `install.packages("gapminder")`
+
+Load the package and data:
+```{r}
+library(gapminder)
+library(tidyverse)
+```
+
+# Initial step
+
+It has been suggested that at initial step, we look over the data, including:
+
+Number of variables,
+Number of observations, 
+definition of varialbes, 
+and so on.
+```{r}
+glimpse(gapminder)
+```
+
+# Interesting point is that:
+
+* **Factor** variables `country` and `continent`
+
+   + Factors are categorical data with an underlying numeric representation
+
+--
+
+* For number of observation, you can use nrow(gapminder) in addition of the above output. 
+
+--
+
+* A nested/hierarchical structure: `year` in `country` in `continent`
+
+   + These are panel data!
+   
+--
+# Description of the Data
+
+```{r}
+?gapminder
+```
+
+Also, if you use external datasets like some CSV files, this code , i.e. "arrtibutre(NAME_OF_DATA)" or especially for description of variables arrtibutre(NAME_OF_DATA)$dictionary, can be useful.
+
+--
+# Summary
+
+General information about:
+  + the statistics of variables 
+  + the number of rows related to factor variables 
+
+
+```{r}
+summary(gapminder)
+```
+# `filter` Data Frames
+
+How we can choose on country like Brazil 
+```{r}
+gapminder %>% filter(country == "Brazil")
+```
+
+
+We used `==` for testing "equals": `country == "Brazil"`.
+
+--
+
+* `!=`: not equal to
+
+* `>`, `>=`, `<`, `<=`: less than, less than or equal to, etc.
+
+* `%in%`: used with checking equal to one of several values
+
+--
+
+Or we can combine multiple logical conditions:
+
+* `&`: both conditions need to hold (AND)
+
+* `|`: at least one condition needs to hold (OR)
+
+* `!`: inverts a logical condition (`TRUE` becomes `FALSE`, `FALSE` becomes `TRUE`)
+
+--
+
+
+# Examples
+
+ observations from Brazil after 1990 and through 2000.
+```{r}
+gapminder %>%
+    filter(country == "Brazil" &
+           year > 1990 &
+           year <= 2000 )
+```
+
+two first of observations from China who were expect to live more than 60 years  after 1950.
+
+```{r}
+China <- gapminder %>% 
+          filter(country == "China" &
+                lifeExp > 60 &
+                year > 1950)
+head(China, 2)
+```
+
+# plots 
+
+Bar chart
+```{r}
+ggplot(gapminder, aes(x=continent, color=continent)) + 
+  geom_bar()
+
+ggplot(gapminder, aes(x=continent, fill=continent)) + 
+  geom_bar()
+```
+
+```{r}
+mybar <- last_plot()
+```
+
+```{r}
+mybar + coord_flip()
+mybar + coord_polar()
+```
+
+
+```{r}
+ggplot(data=gapminder, aes(x=continent, y=lifeExp, fill=continent))+
+        geom_boxplot(outlier.size=2)
+        
+```
+
+```{r}
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp))+
+  geom_point()
+```
+
+```{r}
+ggplot(gapminder, aes(x = gdpPercap, y = lifeExp))+
+       geom_point(aes(color=continent)) #+
+       #geom_smooth() 
+```
+
+```{r}
+ggplot(gapminder, aes(x = log10(gdpPercap), y = lifeExp)) +
+  geom_point()
+```
+
+```{r}
+ ggplot(gapminder, aes(x = gdpPercap, y = lifeExp)) +
+        scale_x_log10() +
+        geom_point(aes(color=continent)) +
+        geom_smooth()
+```
+
+
+Ploting Chinese Life Expectancy  
+
+```{r}
+ggplot(data = China, 
+       aes(x = year, y = lifeExp)) +
+    geom_point()
+```
+
+
+
+
+simple modification 
+
+```{r}
+ggplot(data = China, 
+       aes(x = year, y = lifeExp)) +
+  geom_point(color = "red", size = 3)
+```
+
+Changing the axis' and plot's label 
+
+```{r}
+ggplot(data = China, 
+       aes(x = year, y = lifeExp)) +
+  geom_point(color = "red", size = 3) +
+  xlab("Year") +
+  ylab("Life expectancy")+
+  ggtitle("Life expectancy in China")
+```
+Changing theme and font size
+
+```{r}
+ggplot(data = China, 
+       aes(x = year, y = lifeExp)) +
+  geom_point(color = "red", size = 3) +
+  #geom_line(color = "red", size = 3) +
+  xlab("Year") +
+  ylab("Life expectancy")+
+  ggtitle("Life expectancy in China")+
+  theme_bw()
+  #theme_bw(base_size=18) 
+```
+# Plotting All Countries
+
+```{r}
+ggplot(data = gapminder, 
+       aes(x = year, y = lifeExp)) +
+  geom_point(color = "red", size = 3) +
+  #geom_line(color = "red", size = 3) +
+  xlab("Year") + 
+  ylab("Life expectancy") +
+  ggtitle("Life expectancy over time") +
+  theme_bw(base_size=18)
+```
+
+# simple grouping 
+```{r}
+ggplot(data = gapminder, 
+       aes(x = year, y = lifeExp, 
+           group = country)) +
+  geom_line(color = "red") + #<<
+  xlab("Year") + 
+  ylab("Life expectancy") +
+  ggtitle("Life expectancy over time") +
+  theme_bw(base_size=18)
+```
+
+
+```{r}
+ggplot(data = gapminder, 
+       aes(x = year, y = lifeExp, 
+           group = country, 
+           color = continent)) + #<<
+  geom_line() + #<<
+  xlab("Year") + 
+  ylab("Life expectancy") +
+  ggtitle("Life expectancy over time") +
+  theme_bw(base_size=18)
+```
+ Seperating the continet plot and modification on legend position
+```{r}
+ggplot(data = gapminder, 
+       aes(x = year, y = lifeExp, 
+           group = country, 
+           color = continent)) +
+  geom_line() +
+  xlab("Year") + 
+  ylab("Life expectancy") +
+  ggtitle("Life expectancy over time") +
+  theme_bw(base_size=18) +
+  facet_wrap(~ continent)
+  #theme(legend.position = c(0.8, 0.25))
+  #theme(legend.position = "none")
+```
+# Showing a Stored Graph
+
+```{r}
+lifeExp_by_year <- 
+  ggplot(data = gapminder, 
+       aes(x = year, y = lifeExp, 
+           group = country, 
+           color = continent)) +
+  geom_line() +
+  xlab("Year") + 
+  ylab("Life expectancy") +
+  ggtitle("Life expectancy over time") +
+  theme_bw() + 
+  facet_wrap(~ continent) +
+  theme(legend.position = "none")
+```
+
+--call the stored graph
+--add layer to stored graph
+
+```{r}
+lifeExp_by_year #+
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+
+lifeExp_by_year +
+  theme(legend.position = c(0.8, 0.25))+
+  scale_color_manual(
+      name = "Which\ncontinent\nare we\nlooking at?", # \n adds a line break #<<
+      values = c("Africa" = "seagreen", "Americas" = "turquoise1", 
+                 "Asia" = "royalblue", "Europe" = "violetred1", "Oceania" = "yellow"))
+```
+ 
+

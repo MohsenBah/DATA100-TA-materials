@@ -1,0 +1,226 @@
+---
+title: "pipe review"
+author: "Mohsen Bahremani"
+date: "10/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(gapminder)
+
+```
+
+`dplyr` uses the forward pipe operator, usually called simply a **pipe**. We write pipes like `%>%` (`Ctrl+Shift+M`), you can read out loud: "and then..."
+
+Pipes take the object on the *left* and apply the function on the *right*: `x %>% f(y) = f(x, y)`.
+
+```{r}
+gapminder %>% 
+  filter(country == "Canada") %>% 
+  head(2)
+```
+
+## data 
+Use `.` in the data argument whenever you find yourself piping a function where data are not the first argument.
+
+```{r}
+gapminder %>%
+  filter(country == "Canada") %>% 
+  lm(pop ~ year, data = .)
+```
+
+We can use `%in%` like `==` but for matching *any element* in the vector on its right<sup>1</sup>. 
+
+```{r}
+former_yugoslavia <- c("Bosnia and Herzegovina", "Croatia", 
+                       "Montenegro", "Serbia", "Slovenia")
+yugoslavia <- gapminder %>% 
+                  filter(country %in% former_yugoslavia)
+yugoslavia
+```
+
+## `distinct()`
+
+You can see all the *unique values* in your data for combinations of columns using `distinct()`:
+```{r}
+gapminder %>% 
+    distinct(continent, year)
+
+```
+ if we need other features(variables) when we are using distinct:
+```{r}
+gapminder %>% distinct(continent, .keep_all=TRUE)
+```
+## Sorting: `arrange()`
+
+Along with filtering the data to see certain rows, we might want to sort it:
+The data are sorted by ascending `year` and descending `pop`.
+
+
+```{r}
+yugoslavia %>% 
+  arrange(year, desc(pop))
+```
+## Keeping Columns: `select()`
+
+Not only can we limit rows, but we can include specific columns (and put them in the order listed) using `select()`. 
+```{r}
+yugoslavia %>% 
+  select(country, year, pop) %>% 
+  head(4)
+
+```
+## Dropping Columns: `select()`
+
+
+We can instead drop only specific columns with `select()` using `-` signs:
+```{r}
+yugoslavia %>% 
+  select(-continent, -pop, -lifeExp) %>% 
+  head(4)
+```
+
+
+## Renaming Columns with `select()`
+
+
+We can rename columns using `select()`, but that drops everything that isn't mentioned:
+
+```{r}
+yugoslavia %>%
+    select(Life_Expectancy = lifeExp) %>%
+    head(4)
+```
+
+
+## Create New Columns: `mutate()`
+
+In `dplyr`, you can add new columns to a data frame using `mutate()`.
+
+```{r}
+yugoslavia %>% filter(country == "Serbia") %>%
+    select(year, pop, lifeExp) %>%
+    mutate(pop_million = pop / 1000000,
+           life_exp_past_40 = lifeExp - 40) %>%
+    head(5)
+```
+
+
+## General Aggregation: `summarize()`
+
+`summarize()` takes your column(s) of data and computes something using every row:
+
+* Count how many rows there are
+* Calculate the mean
+* Compute the sum
+* Obtain a minimum or maximum value
+* ...
+
+Useful functions
+    Center: mean(), median()
+    Spread: sd(), IQR(), mad()
+    Range: min(), max(), quantile()
+    Position: first(), last(), nth()
+    Count: n(), n_distinct()
+    Logical: any(), all()
+
+# `pull()`
+
+Sometimes you want to extract a single column from a data frame as a *vector* (or single value). 
+
+ *pulls* a column of a data frame out as a vector.
+
+```{r}
+yugoslavia %>%
+    filter(year >= 1982, country == "Serbia") #%>% 
+    #summarize(mean_life_exp = mean(lifeExp)) #%>% 
+    #summarize( bigest_population = max(pop)) %>%
+    #pull()
+
+```
+
+
+For the year 1982, let's get the number of observations, total population, mean life expectancy, and range of life expectancy for former Yugoslavian countries.
+
+```{r}
+yugoslavia %>%
+    filter(year == 1982) %>%
+    summarize(n_obs          = n(),
+              total_pop      = sum(pop),
+              mean_life_exp  = mean(lifeExp),
+              range_life_exp = max(lifeExp) - min(lifeExp)) 
+
+```
+# `group_by()`
+
+
+The special function `group_by()` changes how functions operate on the data, most importantly `summarize()`.
+
+Functions after `group_by()` are computed *within each group* as defined by variables given, rather than over all rows at once. Typically the variables you group by will be integers, factors, or characters, and not continuous real values.
+
+
+```{r}
+yugoslavia %>%
+  group_by(year) %>% 
+    summarize(num_countries     = n_distinct(country),
+              total_pop         = sum(pop),
+              total_gdp_per_cap = sum(pop*gdpPercap)/total_pop) 
+
+```
+
+```{r}
+gapminder %>%
+  group_by(year) %>% 
+    summarize(num_countries     = n_distinct(country),
+              total_pop         = sum(pop),
+              total_gdp_per_cap = sum(pop*gdpPercap)/total_pop) %>% 
+  ggplot(aes(x= year, y = total_pop))+
+  geom_line() + geom_point()
+  
+```
+
+
+```{r}
+gapminder %>%
+    #filter(continent != "Asia") %>% 
+    group_by(continent, year) %>%
+       summarize(num_countries     = n_distinct(country),
+              total_pop         = sum(pop),
+              total_gdp_per_cap = sum(pop*gdpPercap)/total_pop) %>% 
+    ggplot(., aes(x=year, y=total_pop, color=continent)) +
+      geom_point(size=1.5) +
+      geom_smooth(aes(fill=continent), method="lm")
+```
+
+Polt life expectancy in Canada through years compared to US and UK:
+```{r}
+gapminder %>% 
+          filter(country %in% c("Canada","United States", "United Kingdom")) %>% 
+          ggplot(aes (x= year , y = lifeExp))+
+              geom_line( aes(color= country) )
+```
+Polt life expectancy vs GDP per capita in 1952 and 2007 for Canada, US and UK:
+
+```{r}
+gapminder %>% 
+        filter(year %in% c(1952 , 2007)) %>%
+        filter(country %in% c("Canada","United States", "United Kingdom") ) %>%
+        ggplot(aes(gdpPercap, lifeExp, col = country)) +
+        geom_point() +
+        facet_grid(. ~ year)
+
+```
+
+ 
+Which country in the Americas had the shortest life expectancy in months in the year 1962? 
+
+```{r}
+gapminder %>%
+    mutate(lifeExpMonths = 12 * lifeExp) %>%
+    filter(year == 1962, continent =='Americas') %>%
+    arrange(lifeExpMonths)
+```
+

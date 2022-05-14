@@ -1,0 +1,270 @@
+---
+title: "World Hapiness"
+author: "Mohsen Bahremani"
+date: "11/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+This analysis is about World Happiness at 2017 to 2019.  
+
+These two question will be analysis in this project:
+What is the trend in Happiness in Worldwide and region-wise?
+What is/are the most important factor(s) of happiness?
+
+```{r}
+library(tidyverse)
+
+```
+
+
+The datasets used in this file are available on Kaggle. The data comes from the Gallup World Poll.
+https://www.kaggle.com/unsdsn/world-happiness
+
+Data import: There are five separate datasets - 2015 to 2019. I chose three of them.
+```{r}
+df17 <- read_csv("2017.csv")
+df18 <- read_csv("2018.csv")
+df19 <- read_csv("2019.csv")
+```
+
+```{r}
+df18
+
+```
+
+According to the data definition on kaggle,  I am also interested in the columns for Economy (GDP per capita), Family, Health (Life Expectancy), Freedom, Trust (Absence of Government Corruption), and Generosity. These are the six factors of happiness included in the survey. The values in these columns indicate how much each of the factors contributed to the overall happiness score for each country, i.e. how important they were.
+
+I addition country and happiness score are selected.
+
+The relevant columns in the 2017 dataset are selected:
+```{r}
+df17 <- df17 %>% select('Country', 'Happiness.Rank', 'Happiness.Score', 'Economy..GDP.per.Capita.', 'Family', 'Health..Life.Expectancy.','Freedom', 'Trust..Government.Corruption.', Generosity)
+```
+
+
+Also 2018
+```{r}
+df18 <- df18 %>% select('Country or region', 'Overall rank', 'Score', 'GDP per capita', 'Social support', 'Healthy life expectancy', 'Freedom to make life choices', 'Perceptions of corruption', Generosity)
+
+```
+
+Finally 2019
+```{r}
+df19 <- df19 %>% select('Country or region', 'Overall rank', 'Score', 'GDP per capita', 'Social support', 'Healthy life expectancy', 'Freedom to make life choices', 'Perceptions of corruption', Generosity)
+```
+
+I wnat to seprate coutried in small groups by using countrycode, this package helps us to code and decode country and return translation, region and so on. you can look at ?countrycode , ?codelist or https://cran.r-project.org/web/packages/countrycode/countrycode.pdf
+
+install.packages('countrycode') If it is needed
+```{r}
+?countrycode
+?codelist
+```
+
+```{r}
+library(countrycode)
+df19 <- df19 %>% 
+                 mutate('region' =countrycode(df19$`Country or region`, 'country.name', 'region') )
+
+
+```
+```{r}
+df18 <- df18 %>% 
+                 mutate('region' =countrycode(df18$`Country or region`, 'country.name', 'region') )
+df17 <- df17 %>% 
+                 mutate('region' =countrycode(df17$`Country`, 'country.name', 'region') )
+```
+
+
+## Data Analysis
+
+Here’s a world map color-coded by each country’s overall happiness score in 2017.
+```{r}
+worldmap <- map_data("world")
+names(worldmap)[names(worldmap)=="region"] <- "Country"
+worldmap$Country[worldmap$Country == "USA"] <- "United States"
+happy_world <- df17 %>%
+  full_join(worldmap, by = "Country")
+
+map_theme <- theme(
+    axis.title.x = element_blank(),
+    axis.text.x  = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y  = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.background = element_rect(fill = "white"))
+
+ggplot(data = happy_world, mapping = aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = `Happiness.Score`))  +
+  scale_fill_continuous(low="white", high="darkgreen", na.value="snow2") +
+  coord_quickmap() +
+  labs(title = "Happiness Around the World - 2017") +
+  map_theme
+```
+
+The darker the red, the higher the happiness score. Regions in gray do not have happiness data. The happiest regions of the world appear to be in North Europe, North America, Australia and New Zealand. Africa appears to contain the lowest overall happiness scores.
+
+Region-wise table by the average of score give us some leads too:
+```{r}
+ df_average <- df17 %>%
+                select(region, `Happiness.Score`) %>%
+                group_by(region) %>%
+                summarize(Average = mean(`Happiness.Score`)) %>%
+                arrange(desc(Average))
+ df_average
+```
+
+It is comparison among region at 2017:
+```{r}
+ggplot(data = df17, aes(x = region, y = `Happiness.Score`)) +
+  geom_boxplot(aes(color = region, fill = region), alpha = 0.5) +
+  geom_point(aes(color = region), position = position_jitter(width = .1)) +
+  labs(title = "Happiness by World Region - 2017", 
+       x = "Region", 
+       y = "Happiness Score") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = rel(2.5)),
+        axis.title = element_text(size = rel(1.5)),
+        axis.text.x = element_blank())
+```
+
+boxplot and table share the same idea regarding what I mentioned before. North american has higer average and Sub-Saharan Africa has the lowest average, next to Southern Asia.
+
+We can make similar boxplots for 2018 and 2019.
+
+```{r}
+ggplot(data = df18, aes(x = region, y = `Score`)) +
+  geom_boxplot(aes(color = region, fill = region), alpha = 0.5) +
+  geom_point(aes(color = region), position = position_jitter(width = .1)) +
+  labs(title = "Happiness by World Region - 2018", 
+       x = "Region", 
+       y = "Happiness Score") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = rel(2.5)),
+        axis.title = element_text(size = rel(1.5)),
+        axis.text.x = element_blank())
+```
+```{r}
+ggplot(data = df19, aes(x = region, y = `Score`)) +
+  geom_boxplot(aes(color = region, fill = region), alpha = 0.5) +
+  geom_point(aes(color = region), position = position_jitter(width = .1)) +
+  labs(title = "Happiness by World Region - 2019", 
+       x = "Region", 
+       y = "Happiness Score") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = rel(2.5)),
+        axis.title = element_text(size = rel(1.5)),
+        axis.text.x = element_blank())
+```
+
+Just from these boxplots, we can tell that the average happiness scores across world regions don’t change very much from 2015-2017.
+
+Let’s look at how happiness scores changed for each country over time.
+
+```{r}
+df17$year <- "2017"
+df18$year <- "2018"
+df19$year <- "2019"
+
+names(df17)[names(df17)=="Happiness.Score"] <- "score"
+names(df18)[names(df18)=="Score"] <- "score"
+names(df19)[names(df19)=="Score"] <- "score"
+
+names(df18)[names(df18)=="Country or region"] <- "Country"
+names(df19)[names(df19)=="Country or region"] <- "Country"
+
+dfall <- rbind(select(df17,"Country", "region", "score", "year"),
+               select(df18, "Country", "region", "score", "year"),
+               select(df19, "Country", "region", "score", "year"))
+
+ggplot(data = dfall) +
+  geom_line(mapping = aes(x = year, y = score, group = Country, 
+                          color = region),
+            alpha = 0.5, show.legend = FALSE) +
+  geom_point(aes(x = year, y = score, color = region), 
+             position = position_jitter(width = .1),
+             alpha = 0.5,
+             show.legend = FALSE) +
+  labs(title = "Worldwide Happiness Scores 2017-19", 
+       x = "Year", 
+       y = "Score") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = rel(2.5)),
+        axis.title = element_text(size = rel(1.5)),
+        strip.text.x = element_text(size = rel(1.5))) +
+  facet_wrap(~ region)
+```
+As it is obvious, there is no significant change through years.Just very few countries whose scores decreased significantly, and fewer still whose scores increased significantly.  
+
+## Explanatory variables 
+At this section, I want to describe how the factors have an effect on score(just linear relation):
+
+```{r}
+par(mfrow = c(2,3))
+plot(df17$Economy..GDP.per.Capita.,df17$score, xlab = "Economy" , ylab ="Happiness score" )
+plot(df17$Family,df17$score,xlab ="Family" , ylab = "Happiness score" )
+plot(df17$Health..Life.Expectancy.,df17$score,xlab = "Life Expectancy", ylab = "Happiness score" )
+plot(df17$Freedom,df17$score,xlab ="Freedom" , ylab ="Happiness score"  )
+plot(df17$Trust..Government.Corruption.,df17$score,xlab = "Trust" , ylab = "Happiness score" )
+plot(df17$Generosity,df17$score,xlab = "Generosity" , ylab ="Happiness score"  )
+#plot(log(df17$Trust..Government.Corruption.),log(df17$score),xlab = "Trust" , ylab = "Happiness score" )
+#plot(log(df17$Generosity),log(df17$score),xlab = "Generosity" , ylab ="Happiness score"  )
+```
+```{r}
+#library(corrplot)
+#corrplot(cor(df17), addCoef.col = "white", addCoefasPercent=T, type="upper", order="FPC")
+```
+
+```{r}
+pairs(~Economy..GDP.per.Capita.+Family+Health..Life.Expectancy.+Freedom+Trust..Government.Corruption.+Generosity, data = df17, 
+      main="Importances of the Six Factors of Happiness")
+```
+
+
+These plots illustrate that first four factor have significant? relation to score, but last two of them do not show obvious pattern.
+ 
+And also, first row plot are stronger linearity compared to Freedom. 
+
+To better guess, simple linear regression is tested:
+$$
+Y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \epsilon
+
+$$
+
+
+
+```{r}
+model.fit= lm(score~Economy..GDP.per.Capita.+Family+Health..Life.Expectancy.+Freedom+Trust..Government.Corruption.+Generosity, data = df17)
+summary(model.fit)
+```
+As correlation showed: Trust and Generosity do not have linear relation to score. Other type of relation like log , quadratic should be checked. 
+
+Let’s take a closer look at the top 10 happiest countries in 2017 and how much each of the six factors contributed toward their overall happiness scores. For this, a stacked bar plot would be a useful visualization.
+
+```{r}
+dfwide <- df17 %>%
+          head(10)
+
+dflong <- gather(dfwide, Factor, `Importance of Factor`, Economy..GDP.per.Capita.:Generosity, factor_key=TRUE)
+
+ggplot(data = dflong) +
+  geom_bar(stat = "identity", 
+           aes(x = Country, y = `Importance of Factor`, fill = Factor)) +
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  labs(title = "The Six Factors of Happiness in the Ten Happiest Countries") +
+  theme(plot.title = element_text(size = rel(1.5)),
+        axis.title = element_text(size = rel(1.5)))
+```
+In general, Economy and Family seem to the the two most important factors of happiness in these countries. Trust (absence of corruption) and Generosity are the least important.
+
+##Conclusion
+
+This analysis demonstrated that Northern Europe, North America, Australia and New Zealand are the happiest countries and Sub-Saharan Africa and Southern Asia seems not happy, unfortunatly. In addition, average of the score through years did not change significantly. it is not surprisingly,the happiest country are those which posses powerful economy. I have also tested that these three factors (Economy, Family, and Health) are particularly important since they have a posivite effect on individuals living.
